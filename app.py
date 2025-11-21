@@ -88,3 +88,4 @@ else:
     st.write(f"**Mediana:** {median_medv:.2f}")
     st.write(f"**Desviación estándar:** {std_medv:.2f}")
 
+
