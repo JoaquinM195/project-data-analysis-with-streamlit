@@ -1,25 +1,27 @@
 import streamlit as st
 import pandas as pd
+from sklearn.datasets import fetch_california_housing
+
 
 st.set_page_config(
-    page_title="Boston Housing Explorer",
+    page_title="California Housing Explorer",
     page_icon="🏠",
     layout="wide")
 
-st.title("🏠 Análisis Interactivo – Boston Housing")
-st.caption("Proyecto de análisis de datos con Streamlit. ")
+st.title("🏠 Análisis Interactivo – California Housing")
+st.caption("Proyecto de análisis de datos con Streamlit.")
 st.markdown("---")
 
 st.subheader("📘 Diccionario de variables del dataset")
 
 features_info = {
-    "CRIM": "Tasa de criminalidad per cápita por ciudad.",
-    "ZN": "Proporción de suelo residencial con lotes > 25.000 pies².",
-    "INDUS": "Proporción de acres de negocios no minoristas por ciudad.",
-    "CHAS": "Dummy del Río Charles (=1 si limita con el río, 0 en caso contrario).",
-    "RM": "Número promedio de habitaciones por vivienda.",
-    "LSTAT": "Porcentaje de población con menor estatus socioeconómico.",
-    "MEDV (Target)": "Valor mediano de viviendas ocupadas por propietarios (en miles de USD)."}
+    "HouseAge": "Mediana de la edad de las casas dentro del grupo de bloques.",
+    "AveRooms": "Promedio de habitaciones por hogar.",
+    "AveBedrms": "Promedio de dormitorios por hogar.",
+    "Population": "Población del grupo de bloques.",
+    "Latitude": "Latitud del centro geográfico del grupo de bloques.",
+    "Longitude": "Longitud del centro geográfico del grupo de bloques.",
+    "MedHouseVal (Target)": "Mediana del valor de la vivienda (en cientos de miles de dólares)."}
 
 df_diccionario = pd.DataFrame(
     list(features_info.items()),
@@ -31,61 +33,62 @@ st.markdown("---")
 
 st.subheader("Fase 1: Carga y Preparación de Datos")
 
-url = "https://raw.githubusercontent.com/selva86/datasets/master/BostonHousing.csv"
-df_boston = pd.read_csv(url)
+housing = fetch_california_housing()
 
-df_boston.columns = df_boston.columns.str.upper()
+df_california = pd.DataFrame(housing.data, columns=housing.feature_names)
+df_california["MedHouseVal"] = housing.target
 
-st.markdown("**Primeras 5 filas del DataFrame (df_boston)**")
-st.dataframe(df_boston.head())
+st.markdown("**Primeras 5 filas del DataFrame (df_california)**")
+st.dataframe(df_california.head())
 
 st.markdown("**Tipos de datos por columna**")
-st.write(df_boston.dtypes)
+st.write(df_california.dtypes)
 
 st.markdown("**Valores faltantes por columna**")
-st.write(df_boston.isna().sum())
+st.write(df_california.isna().sum())
 
 st.markdown("---")
+
 st.subheader("Fase 2: Análisis Descriptivo Interactivo")
 
-# Sidebar con título y descripción
 st.sidebar.markdown("## 🎛 Controles de Filtrado")
 st.sidebar.markdown(
-    "Ajusta el nivel de **CRIM** (criminalidad) y el filtro de **CHAS** "
-    "para analizar cómo varía el valor mediano de vivienda (**MEDV**).")
+    "Ajustá el rango de **HouseAge** (edad mediana de la casa) "
+    "y la **Latitud** (desde 32,54 hasta 41,95) para explorar el valor de la vivienda (**MedHouseVal**)."
+)
 
-crim_min = float(df_boston["CRIM"].min())
-crim_max = float(df_boston["CRIM"].max())
+houseage_min = float(df_california["HouseAge"].min())
+houseage_max = float(df_california["HouseAge"].max())
 
-max_crim = st.sidebar.slider(
-    "Filtrar por CRIM (tasa de criminalidad)",
-    min_value=crim_min,
-    max_value=crim_max,
-    value=crim_max)
+houseage_range = st.sidebar.slider(
+    "Rango de la mediana del Valor de la Casa (HouseAge)",
+    min_value=houseage_min,
+    max_value=houseage_max,
+    value=(houseage_min, houseage_max))
 
-only_river = st.sidebar.checkbox("Limita con Río Charles (CHAS = 1)")
+st.sidebar.markdown("### Filtro por Latitud mínima")
+lat_min_user = st.sidebar.number_input(
+    "Latitud mínima",
+    min_value=float(df_california["Latitude"].min()),
+    max_value=float(df_california["Latitude"].max()),
+    value=float(df_california["Latitude"].min()))
 
-df_filtrado = df_boston[df_boston["CRIM"] <= max_crim].copy()
-
-if only_river:
-    df_filtrado = df_filtrado[df_filtrado["CHAS"] == 1]
+df_filtrado = df_california[
+    (df_california["HouseAge"] >= houseage_range[0]) &
+    (df_california["HouseAge"] <= houseage_range[1]) &
+    (df_california["Latitude"] >= lat_min_user)
+].copy()
 
 st.markdown(f"**Registros después de aplicar filtros:** {df_filtrado.shape[0]}")
 
-st.markdown("### Resumen de MEDV (Valor Mediano de la Vivienda)")
+st.markdown("### Resumen de MedHouseVal (Valor de la Vivienda)")
 
-if df_filtrado.empty:
-    st.warning("No hay datos con los filtros seleccionados.")
-else:
-    medv_values = df_filtrado["MEDV"].values
+med_series = df_filtrado["MedHouseVal"]
 
-    mean_medv  = medv_values.mean()
-    med_medv   = medv_values.mean()
-    median_medv = medv_values.mean()
-    std_medv   = medv_values.std()
+mediana_valor = med_series.median()
+rango_valor = med_series.max() - med_series.min()
 
-    st.write(f"**Media:** {mean_medv:.2f}")
-    st.write(f"**Mediana:** {median_medv:.2f}")
-    st.write(f"**Desviación estándar:** {std_medv:.2f}")
+st.write(f"**Mediana de MedHouseVal:** {mediana_valor:.3f}")
+st.write(f"**Rango (Máx - Mín) de MedHouseVal:** {rango_valor:.3f}")
 
 
